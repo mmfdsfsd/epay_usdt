@@ -34,45 +34,77 @@ class usdt_plugin
     {
         global $channel, $order, $conf, $DB, $cdnpublic;
     
-        // --- 完全保留你的原始参数定义 ---
+        // --- 保留你的原始参数 ---
         $valid   = (strtotime($order['addtime']) + intval($channel['appurl'])) * 1000;
         $address = $channel['appid'];
         $rate    = self::getRate();
         $usdt    = round($order['realmoney'] / $rate, 2);
-        // 这里保留你最新版的时间计算方式
+    
+        // 关键修复：用当前时间窗口
         $addtime = date('Y-m-d H:i:s', time() - intval($channel['appurl']));
+        $params = [$channel['id'], 0, $addtime, $order['trade_no'], $order['money']];
     
-        /**
-         * 核心查重逻辑升级
-         * 保持你的 $params 结构，但通过循环确保 $usdt 递增到唯一为止
-         */
-        while (true) {
-            // 查找是否存在金额相同的订单
-            $params = [$channel['id'], 0, $addtime, $order['trade_no'], $order['money']];
-            
-            //对当前计算出的 $usdt 的匹配校验
-            $row = $DB->getRow('select * from pre_order where channel = ? and status = ? and addtime >= ? and trade_no != ? and money = ? and param = ? order by param desc limit 1', array_merge($params, [$usdt]));
+        try {
+            // ==============================
+            // 1. 开启事务
+            // ==============================
+            $DB->exec("BEGIN");
     
-            if ($row && $row['param'] > 0) {
-                // 如果发现金额已被占用，则递增 0.01 并继续循环校验
-                $usdt = bcadd($usdt, 0.01, 2);
-            } else {
-                // 如果没有冲突，跳出循环
-                break;
+            // ==============================
+            // 2. 核心：带行级锁的查询 (FOR UPDATE)
+            // 只有加上 FOR UPDATE，多线程下才会强制排队
+            // ==============================
+            $row = $DB->getRow(
+                "SELECT param 
+                 FROM pre_order 
+                 WHERE channel = ? 
+                 AND status = ? 
+                 AND addtime >= ? 
+                 AND trade_no != ? 
+                 AND money = ? 
+                 AND param IS NOT NULL 
+                 AND param > 0 
+                 ORDER BY CAST(param AS DECIMAL(18,2)) DESC 
+                 LIMIT 1 
+                 FOR UPDATE", 
+                $params
+            );
+    
+            // ==============================
+            // 3. 计算新金额
+            // ==============================
+            if ($row && isset($row['param']) && $row['param'] > 0) {
+                $usdt = bcadd((string)$row['param'], '0.01', 2);
             }
+    
+            // ==============================
+            // 4. 执行更新
+            // ==============================
+            $DB->exec('UPDATE pre_order SET param = ? WHERE trade_no = ?', [$usdt, $order['trade_no']]);
+    
+            // ==============================
+            // 5. 提交事务（释放锁）
+            // ==============================
+            $DB->exec("COMMIT");
+    
+        } catch (\Exception $e) {
+            // 如果中间报错，回滚操作，防止数据混乱
+            $DB->exec("ROLLBACK");
+            throw $e;
         }
     
-        // --- 执行更新 ---
-        $DB->exec('update pre_order set param = ? where trade_no = ?', [$usdt, $order['trade_no']]);
-    
+        // --- 后续逻辑保持不变 ---
         ob_clean();
-        // 修正 Header 格式错误（这是必须改的，否则浏览器无法识别）
         header("Content-Type: text/html; charset=UTF-8");
+    
         define('PLUGIN_PATH', PLUGIN_ROOT . PAY_PLUGIN . '/');
         define('PLUGIN_STATIC', 'https://epay-usdt.pages.dev');
-        require_once PLUGIN_PATH . '/pay.php'; 
+    
+        require_once PLUGIN_PATH . '/pay.php';
+    
         exit(0);
     }
+
 
     public static function getRate(): float
     {
