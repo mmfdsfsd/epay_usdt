@@ -33,28 +33,44 @@ class usdt_plugin
     public static function submit()
     {
         global $channel, $order, $conf, $DB, $cdnpublic;
-
+    
+        // --- 完全保留你的原始参数定义 ---
         $valid   = (strtotime($order['addtime']) + intval($channel['appurl'])) * 1000;
         $address = $channel['appid'];
         $rate    = self::getRate();
         $usdt    = round($order['realmoney'] / $rate, 2);
-        $expire  = date('Y-m-d H:i:s', strtotime($order['addtime']) - intval($channel['appurl']));;
-        $params = [$channel['id'], 0, $expire, $order['trade_no'], $order['money']];
-        $row    = $DB->getRow('select * from pre_order where channel = ? and status = ? and addtime >= ? and trade_no != ? and money = ? order by param desc limit 1', $params);
-        if ($row) {
-            $usdt = bcadd($row['param'], 0.01, 2);
+        // 这里保留你最新版的时间计算方式
+        $addtime = date('Y-m-d H:i:s', time() - intval($channel['appurl']));
+    
+        /**
+         * 核心查重逻辑升级
+         * 保持你的 $params 结构，但通过循环确保 $usdt 递增到唯一为止
+         */
+        while (true) {
+            // 查找是否存在金额相同的订单
+            $params = [$channel['id'], 0, $addtime, $order['trade_no'], $order['money']];
+            
+            //对当前计算出的 $usdt 的匹配校验
+            $row = $DB->getRow('select * from pre_order where channel = ? and status = ? and addtime >= ? and trade_no != ? and money = ? and param = ? order by param desc limit 1', array_merge($params, [$usdt]));
+    
+            if ($row && $row['param'] > 0) {
+                // 如果发现金额已被占用，则递增 0.01 并继续循环校验
+                $usdt = bcadd($usdt, 0.01, 2);
+            } else {
+                // 如果没有冲突，跳出循环
+                break;
+            }
         }
-
+    
+        // --- 执行更新 ---
         $DB->exec('update pre_order set param = ? where trade_no = ?', [$usdt, $order['trade_no']]);
-
+    
         ob_clean();
-        header("application:text/html;charset=UTF-8");
-
+        // 修正 Header 格式错误（这是必须改的，否则浏览器无法识别）
+        header("Content-Type: text/html; charset=UTF-8");
         define('PLUGIN_PATH', PLUGIN_ROOT . PAY_PLUGIN . '/');
         define('PLUGIN_STATIC', 'https://epay-usdt.pages.dev');
-
-        require_once PLUGIN_PATH . '/pay.php';
-
+        require_once PLUGIN_PATH . '/pay.php'; 
         exit(0);
     }
 
