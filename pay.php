@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
     <link rel="shortcut icon" href="<?= PLUGIN_STATIC ?>/img/tether.svg"/>
-    <title>USDT 在线收银台</title>
+    <title>在线收银台</title>
     <link href="<?= PLUGIN_STATIC ?>/css/main.min.css" rel="stylesheet"/>
 </head>
 <body>
@@ -19,11 +19,9 @@
         <div class="icon">
             <img class="logo" src="<?= PLUGIN_STATIC ?>/img/tether.svg" alt="logo">
         </div>
-        <h1>
-            <?= $_SERVER['HTTP_HOST']; ?>
-        </h1>
         <label>
-            请扫描二维码或点击金额和地址粘贴转账USDT(trc-20)支付。<br> <b>转账金额必须为下方显示的金额且需要在倒计时内完成转账，否则无法被系统确认！</b>
+            请扫描二维码或点击金额和地址粘贴转账USDT(trc-20)支付。<br> 
+            <b>扣除转账手续费后的到账金额必须为下方显示的金额，且需要在倒计时内完成转账，否则无法被系统确认！</b>
         </label>
     </div>
     <div class="content">
@@ -39,7 +37,7 @@
             <div class="main">
                 <div class="qr-image" id="qrcode"></div>
             </div>
-            <div class="timer">
+            <div class="timer" style="color: #00AA00;">
                 <ul class="downcount">
                     <li>
                         <span class="hours">00</span>
@@ -59,9 +57,6 @@
             </div>
         </div>
     </div>
-    <div class="footer">
-        <p>Powered by <a href="https://github.com/v03413/epay_usdt" target="_blank">莫名博客</a></p>
-    </div>
 </div>
 <script src="<?= PLUGIN_STATIC ?>/js/jquery.min.js"></script>
 <script src="<?= PLUGIN_STATIC ?>/js/clipboard.min.js"></script>
@@ -75,7 +70,7 @@
             dataType: "json",
             url: "/getshop.php",
             timeout: 10000, //ajax请求超时时间10s
-            data: {type: "alipay", trade_no: "<?php echo $order['trade_no']?>"}, //post数据
+            data: {type: "usdt", trade_no: "<?php echo $order['trade_no']?>"}, //post数据
             success: function (data, textStatus) {
                 //从服务器得到数据，显示数据并继续查询
                 if (data.code == 1) {
@@ -102,7 +97,7 @@
             dataType: "json",
             url: "/getshop.php",
             timeout: 10000, //ajax请求超时时间10s
-            data: {type: "alipay", trade_no: "<?php echo $order['trade_no']?>"},
+            data: {type: "usdt", trade_no: "<?php echo $order['trade_no']?>"},
             success: function (data, textStatus) {
                 //从服务器得到数据，显示数据并继续查询
                 if (data.code == 1) {
@@ -141,7 +136,7 @@
             let minute = Math.floor(second / 60);
             let hour = Math.floor(minute / 60);
             if (ms <= 0) {
-                layer.alert("支付超时，请重新发起支付！", {icon: 5});
+                layer.alert("支付超时，收款地址订单号已失效，请回到网站重新发起支付！", {icon: 5});
                 return;
             }
 
