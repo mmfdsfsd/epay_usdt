@@ -8,7 +8,7 @@ if (function_exists("set_time_limit")) {
 }
 
 $id      = intval($argv[1]);
-$channel = $DB->getRow('select * from pre_channel where id = ? limit 1', [$id]);
+$channel = $DB->getRow('select * from pay_channel where id = ? limit 1', [$id]);
 if (!$channel) {
 
     exit("错误：没找到该USDT支付通道\n");
