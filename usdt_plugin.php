@@ -236,11 +236,12 @@ class usdt_plugin
     
         $addtime = date(
             'Y-m-d H:i:s',
-            time()-86400
+            time() - intval($channel['appurl'])
         );
     
     
-        echo "扫描时间：".$addtime."\n";
+        echo "扫描最近".intval($channel['appurl'])."秒内订单\n";
+        echo "起始时间：".$addtime."\n";
     
     
         $rows=$DB->query(
