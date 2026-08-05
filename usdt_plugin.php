@@ -21,9 +21,9 @@ class usdt_plugin
                 'note' => 'AUTO实时获取汇率',
             ],
             'appurl' => [
-                'name' => '超时时长（秒）',
+                'name' => '支付超时时长（秒）',
                 'type' => 'input',
-                'note' => '例如1200',
+                'note' => '例如1200秒',
             ],
         ],
         'select' => null,
@@ -240,10 +240,12 @@ class usdt_plugin
         );
     
     
-        echo "扫描最近".intval($channel['appurl'])."秒内订单\n";
+        echo "扫描最近".intval($channel['appurl'])."秒内所有 创建的、未支付、未匹配链上交易的 USDT 订单\n";
         echo "起始时间：".$addtime."\n";
     
-    
+        /**
+         *  扫描最近下单设置的有效时间内所有创建的、未支付、未匹配链上交易的 USDT 订单
+        */
         $rows=$DB->query(
             "
             SELECT *
